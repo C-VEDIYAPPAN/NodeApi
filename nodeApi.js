@@ -3,7 +3,6 @@ import bodyParser from "body-parser";
 import axios from "axios";
 import { parseString } from "xml2js";
 import js2xmlparser from "js2xmlparser";
-import Url from "./validUrl.js";
 import dotenv from "dotenv";
 import fs from "fs";
 import https from "https";
@@ -84,7 +83,7 @@ app.post("/RestApi-call", async (req, res) => {
     const xmlRequest = convertJsonToXml(req.body);
     // Validate the middleware header
     validateMWHeader(MW_HEADER);
-    const soapEndpoint = Url(MW_HEADER.ServiceName);
+    const soapEndpoint = process.env.APIURL;
 
     const sslOptions = {
       key: fs.readFileSync(process.env.SERVERPRIVATEKEY),
