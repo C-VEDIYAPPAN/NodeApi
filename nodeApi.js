@@ -4,13 +4,11 @@ import axios from "axios";
 import { parseString } from "xml2js";
 import js2xmlparser from "js2xmlparser";
 import dotenv from "dotenv";
-import fs from "fs";
-import https from "https";
 import crypto from "crypto";
 
 dotenv.config({ path: "./Config.env" });
 const app = express();
-const port = 443;
+const port = 3000; // Use a non-privileged port for HTTP
 
 var MW_HEADER;
 
@@ -20,12 +18,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Configuration for encryption/decryption
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const IV_LENGTH = 16;
-
-// const enc = encrypt(process.env.AUTH_TOKEN);
-// console.log("key :: " + enc);
-// console.log(
-//   decrypt("dc196725c4ba0b591ebbc19abccc5da5:a99f156a7fafa5f76019270f025b0447")
-// );
 
 function encrypt(text) {
   let iv = crypto.randomBytes(IV_LENGTH);
@@ -149,15 +141,8 @@ app.post("/RestApi-call", async (req, res) => {
     validateMWHeader(MW_HEADER);
     const soapEndpoint = process.env.APIURL;
 
-    const sslOptions = {
-      key: fs.readFileSync(process.env.SERVERPRIVATEKEY),
-      cert: fs.readFileSync(process.env.SERVERCERTIFICATE),
-      ca: fs.readFileSync(process.env.SERVERCRTCERTIFICATE),
-      requestCert: true,
-      rejectUnauthorized: true,
-    };
-
-    const httpsAgent = new https.Agent(sslOptions);
+    // No https.Agent needed for outgoing requests unless the target endpoint requires client certs.
+    // If you need to call an HTTPS endpoint with client certs, you can still use https.Agent here.
 
     console.log("[DEBUG] Sending API Request to:", soapEndpoint);
 
@@ -166,7 +151,7 @@ app.post("/RestApi-call", async (req, res) => {
         "Content-Type": "text/xml;charset=UTF-8",
       },
       timeout: 10000,
-      httpsAgent: httpsAgent,
+      // httpsAgent: httpsAgent, // Only needed if the SOAP endpoint requires SSL client certs
     });
 
     console.log("[DEBUG] API Response Status:", response.status);
@@ -204,12 +189,7 @@ app.post("/RestApi-call", async (req, res) => {
   }
 });
 
-// Create HTTPS server
-const sslOptions = {
-  key: fs.readFileSync(process.env.PRIVATEKEY),
-  cert: fs.readFileSync(process.env.CERTIFICATE),
-};
-
-https.createServer(sslOptions, app).listen(port, () => {
-  console.log(`[INFO] HTTPS Server is running at https://localhost:${port}`);
+// Start HTTP server
+app.listen(port, () => {
+  console.log(`[INFO] HTTP Server is running at http://localhost:${port}`);
 });
