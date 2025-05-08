@@ -8,7 +8,7 @@ import crypto from "crypto";
 
 dotenv.config({ path: "./Config.env" });
 const app = express();
-const port = 3000; // Use a non-privileged port for HTTP
+const port = 443; // Use a non-privileged port for HTTP
 
 var MW_HEADER;
 
