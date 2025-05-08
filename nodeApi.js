@@ -6,6 +6,7 @@ import js2xmlparser from "js2xmlparser";
 import dotenv from "dotenv";
 import fs from "fs";
 import https from "https";
+import crypto from "crypto";
 
 dotenv.config({ path: "./Config.env" });
 const app = express();
@@ -15,6 +16,69 @@ var MW_HEADER;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Configuration for encryption/decryption
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+const IV_LENGTH = 16;
+
+// const enc = encrypt(process.env.AUTH_TOKEN);
+// console.log("key :: " + enc);
+// console.log(
+//   decrypt("dc196725c4ba0b591ebbc19abccc5da5:a99f156a7fafa5f76019270f025b0447")
+// );
+
+function encrypt(text) {
+  let iv = crypto.randomBytes(IV_LENGTH);
+  let cipher = crypto.createCipheriv(
+    "aes-256-cbc",
+    Buffer.from(ENCRYPTION_KEY, "hex"),
+    iv
+  );
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
+
+// Utility: Decrypt data
+function decrypt(text) {
+  let textParts = text.split(":");
+  let iv = Buffer.from(textParts.shift(), "hex");
+  let encryptedText = Buffer.from(textParts.join(":"), "hex");
+  let decipher = crypto.createDecipheriv(
+    "aes-256-cbc",
+    Buffer.from(ENCRYPTION_KEY, "hex"),
+    iv
+  );
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+}
+
+// Middleware to check for authorization token (now expecting an encrypted token)
+function checkAuthToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const encryptedToken = authHeader.split(" ")[1];
+    try {
+      const decryptedToken = decrypt(encryptedToken);
+      if (decryptedToken === process.env.AUTH_TOKEN) {
+        return next();
+      } else {
+        console.warn(
+          "[WARN] Authentication failed: Decrypted token does not match."
+        );
+        return res.status(403).json({ error: "Forbidden: Invalid token" });
+      }
+    } catch (error) {
+      console.error("[ERROR] Error decrypting token:", error.message);
+      return res.status(403).json({ error: "Forbidden: Invalid token format" });
+    }
+  }
+  res.status(403).json({ error: "Forbidden: Missing or invalid token format" });
+}
+
+// Apply the middleware to all routes
+app.use(checkAuthToken);
 
 // Utility: Validate request body
 function validateRequestBody(body) {
@@ -31,8 +95,8 @@ function convertJsonToXml(json) {
     MW_HEADER = json[MwHeader];
     const rootTag = Object.keys(json)[1];
     console.log("[DEBUG] Root tag:\n", rootTag);
-    const innnerJson = json[rootTag];
-    const xml = js2xmlparser.parse(rootTag, innnerJson);
+    const innerJson = json[rootTag];
+    const xml = js2xmlparser.parse(rootTag, innerJson);
     console.log("[DEBUG] Converted JSON to XML:\n", xml);
     return xml;
   } catch (err) {

@@ -4,7 +4,8 @@
   "description": "",
   "main": "nodeApi.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node nodeApi.js"
   },
   "keywords": [],
   "author": "",
@@ -12,6 +13,7 @@
   "type": "module",
   "dependencies": {
     "axios": "^1.8.4",
+    "crypto": "^1.0.1",
     "dotenv": "^10.0.0",
     "express": "^5.1.0",
     "js2xmlparser": "^5.0.0",
