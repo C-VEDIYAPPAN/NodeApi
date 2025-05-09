@@ -88,7 +88,9 @@ function convertJsonToXml(json) {
     const rootTag = Object.keys(json)[1];
     console.log("[DEBUG] Root tag:\n", rootTag);
     const innerJson = json[rootTag];
-    const xml = js2xmlparser.parse(rootTag, innerJson);
+    const xml = js2xmlparser
+      .parse(rootTag, innerJson)
+      .replace(/<(\w+)([^>]*)\/>/g, "<$1$2></$1>");
     console.log("[DEBUG] Converted JSON to XML:\n", xml);
     return xml;
   } catch (err) {
