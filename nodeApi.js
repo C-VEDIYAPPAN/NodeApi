@@ -114,6 +114,8 @@ app.post("/RestApi-call", async (req, res) => {
       timeout: 10000,
     });
 
+    console.log("[INFO] Certificate validation successful");
+
     console.log("[DEBUG] API Response Status:", response.status);
     console.log("[DEBUG] API Response Body:\n", response.data);
 
