@@ -187,8 +187,4 @@ app.listen(port, () => {
   console.log(
     `[INFO] Successfully HTTP Server is running at <=> http://localhost:${port}`
   );
-  log(
-    "INFO",
-    `Successfully HTTP Server is running at <=> http://localhost:${port}`
-  );
 });
