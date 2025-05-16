@@ -101,7 +101,7 @@ app.post("/RestApi-call", async (req, res) => {
       cert: fs.readFileSync(process.env.SERVERCERTIFICATE),
       key: fs.readFileSync(process.env.SERVERPRIVATEKEY),
       ca: fs.readFileSync(process.env.SERVERCRTCERTIFICATE),
-      rejectUnauthorized: true,
+      rejectUnauthorized: false,
     });
 
     console.log("[DEBUG] Sending API Request to:", soapEndpoint);
@@ -148,7 +148,6 @@ app.post("/RestApi-call", async (req, res) => {
       return res.status(502).json({
         error: "Certificate validation failed",
         message: err.message,
-        details: err, // You can remove this in production for security
       });
     }
 
