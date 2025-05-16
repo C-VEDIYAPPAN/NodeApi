@@ -101,7 +101,7 @@ app.post("/RestApi-call", async (req, res) => {
       cert: fs.readFileSync(process.env.SERVERCERTIFICATE),
       key: fs.readFileSync(process.env.SERVERPRIVATEKEY),
       ca: fs.readFileSync(process.env.SERVERCRTCERTIFICATE),
-      rejectUnauthorized: true,
+      rejectUnauthorized: false,
     });
 
     console.log("[DEBUG] Sending API Request to:", soapEndpoint);
@@ -168,6 +168,6 @@ app.post("/RestApi-call", async (req, res) => {
 // Start HTTP server
 app.listen(port, () => {
   console.log(
-    `[INFO] Successfully HTTP Server is running at http://localhost:${port}`
+    `[INFO] Successfully HTTP Server is running at <==> http://localhost:${port}`
   );
 });
