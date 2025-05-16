@@ -13,6 +13,17 @@ const port = process.env.PORT || 8080; // Default to 8080 if PORT is not set
 
 var MW_HEADER;
 
+// --- JSON Logger Utility --- //
+function log(level, message, extra = {}) {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...extra,
+  };
+  console.log(JSON.stringify(logEntry));
+}
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -30,7 +41,7 @@ app.get("/", (req, res) => {
 function validateRequestBody(body) {
   const isValid =
     body && typeof body === "object" && Object.keys(body).length > 0;
-  console.log("[DEBUG] Request Body Valid:", isValid);
+  log("DEBUG", "Request Body Valid", { isValid });
   return isValid;
 }
 
@@ -40,15 +51,15 @@ function convertJsonToXml(json) {
     const MwHeader = Object.keys(json)[0];
     MW_HEADER = json[MwHeader];
     const rootTag = Object.keys(json)[1];
-    console.log("[DEBUG] Root tag:\n", rootTag);
+    log("DEBUG", "Root tag", { rootTag });
     const innerJson = json[rootTag];
     const xml = js2xmlparser
       .parse(rootTag, innerJson)
       .replace(/<(\w+)([^>]*)\/>/g, "<$1$2></$1>");
-    console.log("[DEBUG] Converted JSON to XML:\n", xml);
+    log("DEBUG", "Converted JSON to XML", { xml });
     return xml;
   } catch (err) {
-    console.error("[ERROR] JSON to XML conversion failed:", err.message);
+    log("ERROR", "JSON to XML conversion failed", { error: err.message });
     throw new Error("Failed to convert JSON to XML");
   }
 }
@@ -61,12 +72,12 @@ function validateMWHeader(mwHeader) {
   );
 
   if (missingFields.length > 0) {
-    console.error("[ERROR] Missing required MW_HEADER fields:", missingFields);
+    log("ERROR", "Missing required MW_HEADER fields", { missingFields });
     throw new Error(
       `Missing required MW_HEADER fields: ${missingFields.join(", ")}`
     );
   }
-  console.log("[DEBUG] MW_HEADER validation passed");
+  log("DEBUG", "MW_HEADER validation passed");
 }
 
 // Utility: Convert XML to JSON
@@ -74,10 +85,10 @@ function convertXmlToJson(xml) {
   return new Promise((resolve, reject) => {
     parseString(xml, { explicitArray: false }, (err, result) => {
       if (err) {
-        console.error("[ERROR] Failed to parse XML to JSON:", err.message);
+        log("ERROR", "Failed to parse XML to JSON", { error: err.message });
         return reject(new Error("Failed to parse XML response"));
       }
-      console.log("[DEBUG] Parsed XML to JSON:", result);
+      log("DEBUG", "Parsed XML to JSON", { result });
       resolve(result);
     });
   });
@@ -85,10 +96,10 @@ function convertXmlToJson(xml) {
 
 // Call API here
 app.post("/RestApi-call", async (req, res) => {
-  console.log("\n[INFO] Incoming Request Received");
+  log("INFO", "Incoming Request Received");
   try {
     if (!validateRequestBody(req.body)) {
-      console.warn("[WARN] Invalid or empty JSON body");
+      log("WARN", "Invalid or empty JSON body");
       return res.status(400).json({ error: "Invalid or empty JSON body" });
     }
 
@@ -104,7 +115,7 @@ app.post("/RestApi-call", async (req, res) => {
       rejectUnauthorized: false,
     });
 
-    console.log("[DEBUG] Sending API Request to:", soapEndpoint);
+    log("DEBUG", "Sending API Request", { soapEndpoint });
 
     const response = await axios.post(soapEndpoint, xmlRequest, {
       headers: {
@@ -114,13 +125,15 @@ app.post("/RestApi-call", async (req, res) => {
       timeout: 10000,
     });
 
-    console.log("[INFO] Certificate validation successful");
+    log("INFO", "Certificate validation successful");
 
-    console.log("[DEBUG] API Response Status:", response.status);
-    console.log("[DEBUG] API Response Body:\n", response.data);
+    log("DEBUG", "API Response", {
+      status: response.status,
+      body: response.data,
+    });
 
     if (!response.data) {
-      console.error("[ERROR] Empty response from API service");
+      log("ERROR", "Empty response from API service");
       return res.status(502).json({ error: "Empty response from API service" });
     }
 
@@ -130,21 +143,21 @@ app.post("/RestApi-call", async (req, res) => {
       ...jsonResult,
     };
 
-    console.log("[INFO] Successfully processed API request");
+    log("INFO", "Successfully processed API request");
     res.status(200).json(AfterHeaderAdd);
   } catch (err) {
-    // Print full error for debugging
-    console.error("[ERROR] Exception caught:", err);
+    log("ERROR", "Exception caught", { error: err.message, stack: err.stack });
 
     // Detect certificate errors and print details
     if (
       err.code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE" ||
       err.code === "SELF_SIGNED_CERT_IN_CHAIN" ||
-      err.message.includes("self-signed certificate") ||
-      err.message.includes("unable to verify the first certificate") ||
-      err.message.includes("certificate") // catch generic certificate errors
+      (err.message &&
+        (err.message.includes("self-signed certificate") ||
+          err.message.includes("unable to verify the first certificate") ||
+          err.message.includes("certificate")))
     ) {
-      console.error("[CERTIFICATE ERROR]", err.message);
+      log("ERROR", "Certificate validation failed", { error: err.message });
       return res.status(502).json({
         error: "Certificate validation failed",
         message: err.message,
@@ -152,7 +165,10 @@ app.post("/RestApi-call", async (req, res) => {
     }
 
     if (axios.isAxiosError(err)) {
-      console.error("[ERROR] Axios Error Response:", err.response?.data);
+      log("ERROR", "Axios Error Response", {
+        error: err.response?.data || err.message,
+        details: err,
+      });
       return res.status(502).json({
         error: "API service call failed",
         message: err.response?.data || err.message,
@@ -170,5 +186,9 @@ app.post("/RestApi-call", async (req, res) => {
 app.listen(port, () => {
   console.log(
     `[INFO] Successfully HTTP Server is running at <=> http://localhost:${port}`
+  );
+  log(
+    "INFO",
+    `Successfully HTTP Server is running at <=> http://localhost:${port}`
   );
 });
