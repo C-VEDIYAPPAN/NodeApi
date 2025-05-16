@@ -131,7 +131,24 @@ app.post("/RestApi-call", async (req, res) => {
     console.log("[INFO] Successfully processed API request");
     res.status(200).json(AfterHeaderAdd);
   } catch (err) {
-    console.error("[ERROR] Exception caught:", err.message);
+    // Print full error for debugging
+    console.error("[ERROR] Exception caught:", err);
+
+    // Detect certificate errors and print details
+    if (
+      err.code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE" ||
+      err.code === "SELF_SIGNED_CERT_IN_CHAIN" ||
+      err.message.includes("self-signed certificate") ||
+      err.message.includes("unable to verify the first certificate") ||
+      err.message.includes("certificate") // catch generic certificate errors
+    ) {
+      console.error("[CERTIFICATE ERROR]", err.message);
+      return res.status(502).json({
+        error: "Certificate validation failed",
+        message: err.message,
+        details: err, // You can remove this in production for security
+      });
+    }
 
     if (axios.isAxiosError(err)) {
       console.error("[ERROR] Axios Error Response:", err.response?.data);
