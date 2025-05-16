@@ -101,7 +101,7 @@ app.post("/RestApi-call", async (req, res) => {
       cert: fs.readFileSync(process.env.SERVERCERTIFICATE),
       key: fs.readFileSync(process.env.SERVERPRIVATEKEY),
       ca: fs.readFileSync(process.env.SERVERCRTCERTIFICATE),
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
     });
 
     console.log("[DEBUG] Sending API Request to:", soapEndpoint);
