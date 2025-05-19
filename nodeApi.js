@@ -60,7 +60,9 @@ function convertJsonToXml(json) {
     return xml;
   } catch (err) {
     log("ERROR", "JSON to XML conversion failed", { error: err.message });
-    throw new Error("Failed to convert JSON to XML");
+    throw new Error(
+      "Failed to convert JSON to XML (or) Missing Middle Ware Header"
+    );
   }
 }
 
