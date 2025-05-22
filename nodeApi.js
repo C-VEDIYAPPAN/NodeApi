@@ -45,31 +45,6 @@ function extractToken(headerValue) {
   return match ? match[1] : null;
 }
 
-// --- JWT Auth Middleware --- //
-async function jwtAuth(req, res, next) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      log("WARN", "No Authorization header found");
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    const token = extractToken(authHeader);
-    if (!token) {
-      log("WARN", "Malformed Authorization header");
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    const payload = await verifier.verify(token);
-    req.user = payload;
-    log("INFO", "JWT validated", { user: payload.sub });
-    next();
-  } catch (err) {
-    log("ERROR", "JWT validation failed", { error: err.message });
-    return res
-      .status(401)
-      .json({ error: "Unauthorized", message: err.message });
-  }
-}
-
 // --- Token Validation Endpoint --- //
 app.get("/validate-token", async (req, res) => {
   try {
@@ -102,7 +77,6 @@ app.get("/statusCheck", (req, res) => {
   res.status(400).json({ status: "ok" });
 });
 
-// Optional: Root endpoint for ALB health check if path is "/"
 app.get("/", (req, res) => {
   res.status(400).json({ status: "ok" });
 });
@@ -166,8 +140,8 @@ function convertXmlToJson(xml) {
   });
 }
 
-// --- Protected API endpoint --- //
-app.post("/RestApi-call", jwtAuth, async (req, res) => {
+// --- Public API endpoint (NO JWT required) --- //
+app.post("/RestApi-call", async (req, res) => {
   log("INFO", "Incoming Request Received");
   try {
     if (!validateRequestBody(req.body)) {
