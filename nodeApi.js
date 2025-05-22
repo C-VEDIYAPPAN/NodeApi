@@ -6,6 +6,7 @@ import js2xmlparser from "js2xmlparser";
 import dotenv from "dotenv";
 import fs from "fs";
 import https from "https";
+import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 dotenv.config({ path: "./Config.env" });
 const app = express();
@@ -26,6 +27,75 @@ function log(level, message, extra = {}) {
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// --- Cognito JWT Verifier Setup --- //
+const USER_POOL_ID = "me-central-1_8LWkGEUY5";
+const CLIENT_ID = "4bo7bigq40i37r79ldmhj1lg73";
+const TOKEN_USE = "access"; // or "id" if you use ID tokens
+
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: USER_POOL_ID,
+  clientId: CLIENT_ID,
+  tokenUse: TOKEN_USE,
+});
+
+function extractToken(headerValue) {
+  if (!headerValue) return null;
+  const match = headerValue.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1] : null;
+}
+
+// --- JWT Auth Middleware --- //
+async function jwtAuth(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      log("WARN", "No Authorization header found");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const token = extractToken(authHeader);
+    if (!token) {
+      log("WARN", "Malformed Authorization header");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const payload = await verifier.verify(token);
+    req.user = payload;
+    log("INFO", "JWT validated", { user: payload.sub });
+    next();
+  } catch (err) {
+    log("ERROR", "JWT validation failed", { error: err.message });
+    return res
+      .status(401)
+      .json({ error: "Unauthorized", message: err.message });
+  }
+}
+
+// --- Token Validation Endpoint --- //
+app.get("/validate-token", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      log("WARN", "No Authorization header found");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const token = extractToken(authHeader);
+    if (!token) {
+      log("WARN", "Malformed Authorization header");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const payload = await verifier.verify(token);
+    log("INFO", "Token validated", { user: payload.sub });
+    return res.status(200).json({
+      message: "Token is valid",
+      user: payload,
+    });
+  } catch (err) {
+    log("ERROR", "Token validation failed", { error: err.message });
+    return res
+      .status(401)
+      .json({ error: "Unauthorized", message: err.message });
+  }
+});
 
 // --- Health check endpoints --- //
 app.get("/statusCheck", (req, res) => {
@@ -96,8 +166,8 @@ function convertXmlToJson(xml) {
   });
 }
 
-// Call API here
-app.post("/RestApi-call", async (req, res) => {
+// --- Protected API endpoint --- //
+app.post("/RestApi-call", jwtAuth, async (req, res) => {
   log("INFO", "Incoming Request Received");
   try {
     if (!validateRequestBody(req.body)) {
